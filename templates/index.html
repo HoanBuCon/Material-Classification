@@ -55,13 +55,39 @@
             </div>
 
             <div class="detection-area">
-                <div class="video-container">
+                <!-- Khu vực hiển thị ảnh -->
+                <div class="image-display-section">
                     <div id="loading-indicator" class="hidden">
+                        <div class="spinner"></div>
+                        <p class="lang" data-vi="Đang xử lý..." data-en="Processing...">Đang xử lý...</p>
                     </div>
-                    <img id="placeholder" src="{{ url_for('static', filename='img/placeholder.jpg') }}"
-                        alt="Vui lòng tải lên ảnh hoặc bật camera">
-                    <img id="uploaded-image" class="hidden" alt="Kết quả phân tích">
-                    <img id="video-feed" class="hidden" src="" alt="Camera Feed">
+                    
+                    <!-- Placeholder ban đầu -->
+                    <div id="placeholder-container" class="image-container-single">
+                        <img id="placeholder" src="{{ url_for('static', filename='img/placeholder.jpg') }}"
+                            alt="Vui lòng tải lên ảnh hoặc bật camera">
+                    </div>
+                    
+                    <!-- Camera feed -->
+                    <div id="camera-container" class="image-container-single hidden">
+                        <img id="video-feed" src="" alt="Camera Feed">
+                    </div>
+                    
+                    <!-- So sánh ảnh trước và sau -->
+                    <div id="comparison-container" class="image-comparison-container hidden">
+                        <div class="image-wrapper">
+                            <h3 class="image-title lang" data-vi="Ảnh gốc" data-en="Original Image">Ảnh gốc</h3>
+                            <div class="image-box">
+                                <img id="original-image" alt="Ảnh gốc">
+                            </div>
+                        </div>
+                        <div class="image-wrapper">
+                            <h3 class="image-title lang" data-vi="Kết quả nhận diện" data-en="Detection Result">Kết quả nhận diện</h3>
+                            <div class="image-box">
+                                <img id="detected-image" alt="Kết quả nhận diện">
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="result-container">

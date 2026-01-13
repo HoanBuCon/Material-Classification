@@ -3,8 +3,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const startCameraBtn = document.getElementById('start-camera');
     const stopCameraBtn = document.getElementById('stop-camera');
     const uploadFileBtn = document.getElementById('upload-file');
-    const placeholder = document.getElementById('placeholder');
-    const uploadedImage = document.getElementById('uploaded-image');
+    const placeholderContainer = document.getElementById('placeholder-container');
+    const cameraContainer = document.getElementById('camera-container');
+    const comparisonContainer = document.getElementById('comparison-container');
+    const originalImage = document.getElementById('original-image');
+    const detectedImage = document.getElementById('detected-image');
     const videoFeed = document.getElementById('video-feed');
     const loadingIndicator = document.getElementById("loading-indicator");
     const resultsList = document.getElementById('results-list');
@@ -77,13 +80,15 @@ document.addEventListener('DOMContentLoaded', function() {
         document.title = lang === 'vi' ? 'Hệ Thống Phân Loại Vật Liệu Tái Chế' : 'Recyclable Material Sorting System';
         
         // Cập nhật text trong placeholder
-        placeholder.alt = lang === 'vi' ? 'Vui lòng tải lên ảnh hoặc bật camera' : 'Please upload an image or start camera';
+        const placeholder = document.getElementById('placeholder');
+        if (placeholder) {
+            placeholder.alt = lang === 'vi' ? 'Vui lòng tải lên ảnh hoặc bật camera' : 'Please upload an image or start camera';
+        }
         
-        // Cập nhật text trong uploaded-image
-        uploadedImage.alt = lang === 'vi' ? 'Kết quả phân tích' : 'Analysis Result';
-        
-        // Cập nhật text trong video-feed
-        videoFeed.alt = lang === 'vi' ? 'Camera Feed' : 'Camera Feed';
+        // Cập nhật text trong images
+        if (originalImage) originalImage.alt = lang === 'vi' ? 'Ảnh gốc' : 'Original Image';
+        if (detectedImage) detectedImage.alt = lang === 'vi' ? 'Kết quả nhận diện' : 'Detection Result';
+        if (videoFeed) videoFeed.alt = lang === 'vi' ? 'Camera Feed' : 'Camera Feed';
         
         // Cập nhật kết quả hiện tại nếu có
         if (!cameraActive && resultsList.querySelector('.no-results')) {
@@ -108,9 +113,12 @@ document.addEventListener('DOMContentLoaded', function() {
         
         showLoading(true);
         cameraActive = true;
-        placeholder.classList.add('hidden');
-        uploadedImage.classList.add('hidden');
-        videoFeed.classList.remove('hidden');
+        
+        // Ẩn tất cả container khác và hiển thị camera
+        placeholderContainer.classList.add('hidden');
+        comparisonContainer.classList.add('hidden');
+        cameraContainer.classList.remove('hidden');
+        
         videoFeed.src = "/video_feed";
         
         startCameraBtn.disabled = true;
@@ -143,8 +151,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log("Camera đã dừng:", data);
                 cameraActive = false;
                 
-                videoFeed.classList.add('hidden');
-                placeholder.classList.remove('hidden');
+                cameraContainer.classList.add('hidden');
+                placeholderContainer.classList.remove('hidden');
                 
                 startCameraBtn.disabled = false;
                 stopCameraBtn.disabled = true;
@@ -179,6 +187,13 @@ document.addEventListener('DOMContentLoaded', function() {
         
         showLoading(true);
         
+        // Đọc file để hiển thị ảnh gốc
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            originalImage.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+        
         const formData = new FormData();
         formData.append('file', file);
         
@@ -198,11 +213,12 @@ document.addEventListener('DOMContentLoaded', function() {
             const endTime = performance.now();
             const processingTimeMs = endTime - startTime;
             
-            // Hiển thị ảnh đã xử lý
-            placeholder.classList.add('hidden');
-            videoFeed.classList.add('hidden');
-            uploadedImage.classList.remove('hidden');
-            uploadedImage.src = data.image;
+            // Hiển thị ảnh đã xử lý và ảnh gốc
+            placeholderContainer.classList.add('hidden');
+            cameraContainer.classList.add('hidden');
+            comparisonContainer.classList.remove('hidden');
+            
+            detectedImage.src = data.image;
             
             // Hiển thị kết quả
             updateResults(data.objects, processingTimeMs);

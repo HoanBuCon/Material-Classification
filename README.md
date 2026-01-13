@@ -1,0 +1,1 @@
+Đây là dự án nâng cấp lại dự án cũ của một người nào đó đã làm dự án này trước đó nhưng vì dự án đã làm trước đó chưa thực sự tối ưu nên tôi tạo dự án này để nâng cấp dự án đó 💖
