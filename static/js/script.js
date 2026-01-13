@@ -47,12 +47,18 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
+    // Khởi tạo - ẩn loading indicator
+    showLoading(false);
+
     // Khởi tạo placeholder
-    fetch('/static/img/placeholder.jpg')
-        .catch(() => {
-            console.warn("Không tìm thấy ảnh placeholder, sử dụng màu nền");
-            placeholder.style.backgroundColor = "#333";
-        });
+    const placeholderImg = document.getElementById('placeholder');
+    if (placeholderImg) {
+        fetch('/static/img/placeholder.jpg')
+            .catch(() => {
+                console.warn("Không tìm thấy ảnh placeholder, sử dụng màu nền");
+                placeholderImg.style.backgroundColor = "#333";
+            });
+    }
 
     // Áp dụng ngôn ngữ đã lưu
     applyLanguage(currentLanguage);
