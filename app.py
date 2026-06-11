@@ -89,7 +89,24 @@ def is_background(img, x1, y1, w, h, img_width, img_height):
         
     return False
 
-def detect_objects(img):
+LABEL_TRANSLATIONS = {
+    'en': {
+        'Giay': 'Paper',
+        'KimLoai': 'Metal',
+        'Nhua': 'Plastic',
+        'ThuyTinh': 'Glass',
+        'Vai': 'Fabric'
+    },
+    'vi': {
+        'Giay': 'Giay',
+        'KimLoai': 'Kim loai',
+        'Nhua': 'Nhua',
+        'ThuyTinh': 'Thuy tinh',
+        'Vai': 'Vai'
+    }
+}
+
+def detect_objects(img, lang='vi'):
     """Phát hiện đối tượng trong hình ảnh và trả về hình ảnh đã được xử lý và danh sách đối tượng phát hiện"""
     model = load_model()
     if model is None:
@@ -148,9 +165,12 @@ def detect_objects(img):
             label_name = classNames[cls]
             color = classColors.get(label_name, (255, 255, 255))
             
+            # Dịch nhãn hiển thị trên bounding box theo ngôn ngữ
+            display_label = LABEL_TRANSLATIONS.get(lang, {}).get(label_name, label_name)
+            
             # Vẽ box và label
             cv2.rectangle(img, (x1, y1), (x1 + w, y1 + h), color, 2)
-            cv2.putText(img, f"{label_name} {conf:.2f}", (x1, max(30, y1 - 10)), 
+            cv2.putText(img, f"{display_label} {conf:.2f}", (x1, max(30, y1 - 10)), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
             
             # Thêm đối tượng vào danh sách phát hiện
@@ -162,7 +182,7 @@ def detect_objects(img):
     
     return img, detected_objects
 
-def generate_frames():
+def generate_frames(lang='vi'):
     """Generator function cho video stream"""
     global camera, camera_active
     
@@ -175,7 +195,7 @@ def generate_frames():
             break
         else:
             start_time = time.time()
-            processed_frame, detected_objects = detect_objects(frame)
+            processed_frame, detected_objects = detect_objects(frame, lang)
             
             # Tính toán FPS thực tế
             fps = 1 / (time.time() - start_time)
@@ -200,7 +220,8 @@ def video_feed():
     """Route cho video streaming"""
     global camera_active
     camera_active = True
-    return Response(generate_frames(),
+    lang = request.args.get('lang', 'vi')
+    return Response(generate_frames(lang),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
 @app.route('/stop_camera')
@@ -224,13 +245,14 @@ def upload_file():
         return jsonify({"error": "No selected file"}), 400
     
     if file:
+        lang = request.form.get('lang') or request.args.get('lang') or 'vi'
         # Đọc ảnh từ file upload
         file_bytes = file.read()
         nparr = np.frombuffer(file_bytes, np.uint8)
         img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
         
         # Phát hiện đối tượng trong ảnh
-        processed_img, detected_objects = detect_objects(img)
+        processed_img, detected_objects = detect_objects(img, lang)
         
         # Chuyển đổi ảnh đã xử lý thành base64 để hiển thị trên web
         _, buffer = cv2.imencode('.jpg', processed_img)

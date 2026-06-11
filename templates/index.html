@@ -4,154 +4,219 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ Thống Phân Loại Vật Liệu Tái Chế</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <title class="lang" data-vi="Hệ Thống Phân Loại Vật Liệu" data-en="Material Classification System">Hệ Thống Phân Loại Vật Liệu</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 
 <body>
-    <div class="container">
-        <header>
-            <div class="language-button">
-                <button id="language-toggle" class="btn lang-toggle">
-                    <i class="fas fa-language"></i> <span id="lang-text">EN</span>
+    <div class="app-container">
+        <!-- Header Navigation Bar -->
+        <header class="app-header">
+            <div class="brand">
+                <div class="logo-wrapper">
+                    <i class="fas fa-recycle logo-icon"></i>
+                </div>
+                <div class="brand-text">
+                    <h1 class="lang" data-vi="Hệ thống Phân loại Vật liệu" data-en="Material Classification System">Phân Loại Vật Liệu</h1>
+                    <p class="lang" data-vi="Hệ thống tự động phân loại vật liệu tái chế bằng YOLO" data-en="Automated recyclable material sorting system using YOLO">Hệ thống tự động phân loại vật liệu tái chế bằng YOLO</p>
+                </div>
+            </div>
+            
+            <div class="header-actions">
+                <!-- Theme toggle button -->
+                <button id="theme-toggle" class="action-btn" aria-label="Toggle Theme">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <!-- Language toggle button -->
+                <button id="language-toggle" class="action-btn">
+                    <i class="fas fa-globe"></i> <span id="lang-text">EN</span>
                 </button>
             </div>
-        
-            <div class="header-top">
-                <h1>
-                    <i class="fas fa-eye"></i>
-                    <span class="lang" data-vi="Hệ Thống Phân Loại Vật Liệu Tái Chế" data-en="Recyclable Material Sorting System">
-                        Hệ Thống Phân Loại Vật Liệu Tái Chế
-                    </span>
-                </h1>
-            </div>
-        
-            <p class="lang" data-vi="Nhận diện các loại vật liệu: Giấy, Kim loại, Nhựa, Thủy tinh, Vải"
-                data-en="Recognizes materials: Paper, Metal, Plastic, Glass, Fabric">
-                Nhận diện các loại vật liệu: Giấy, Kim loại, Nhựa, Thủy tinh, Vải
-            </p>
         </header>
-        
 
-        <div class="main-content">
-            <div class="controls">
-                <button id="start-camera" class="btn">
-                    <i class="fas fa-video"></i> <span class="lang" data-vi="Bật Camera" data-en="Start Camera">Bật
-                        Camera</span>
-                </button>
-                <button id="stop-camera" class="btn" disabled>
-                    <i class="fas fa-video-slash"></i> <span class="lang" data-vi="Tắt Camera" data-en="Stop Camera">Tắt
-                        Camera</span>
-                </button>
-                <div class="upload-container">
-                    <label for="upload-file" class="btn">
-                        <i class="fas fa-upload"></i> <span class="lang" data-vi="Tải ảnh lên"
-                            data-en="Upload Image">Tải ảnh lên</span>
-                    </label>
-                    <input type="file" id="upload-file" accept="image/*" hidden>
+        <!-- Main Workspace -->
+        <main class="main-content">
+            <!-- Left Side: Control & Viewport -->
+            <div class="column-left">
+                <!-- Control Panel Card -->
+                <div class="card controls-card">
+                    <h2 class="card-title lang" data-vi="Bảng Điều Khiển" data-en="Control Center">Bảng Điều Khiển</h2>
+                    <div class="btn-group">
+                        <button id="start-camera" class="btn btn-success">
+                            <i class="fas fa-play"></i>
+                            <span class="lang" data-vi="Bật Camera" data-en="Start Camera">Bật Camera</span>
+                        </button>
+                        <button id="stop-camera" class="btn btn-danger" disabled>
+                            <i class="fas fa-stop"></i>
+                            <span class="lang" data-vi="Tắt Camera" data-en="Stop Camera">Tắt Camera</span>
+                        </button>
+                        <div class="upload-btn-wrapper">
+                            <label for="upload-file" class="btn btn-primary">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <span class="lang" data-vi="Tải Ảnh Lên" data-en="Upload Image">Tải Ảnh Lên</span>
+                            </label>
+                            <input type="file" id="upload-file" accept="image/*" hidden>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detection Area (Visual Section) -->
+                <div class="card viewport-card">
+                    <div class="image-display-section">
+                        <!-- Loading Overlay -->
+                        <div id="loading-indicator" class="hidden">
+                            <div class="spinner"></div>
+                            <p class="lang" data-vi="Đang phân tích hình ảnh..." data-en="Analyzing image...">Đang phân tích hình ảnh...</p>
+                        </div>
+                        
+                        <!-- Initial Placeholder -->
+                        <div id="placeholder-container" class="image-container-single">
+                            <div class="placeholder-box">
+                                <img id="placeholder" src="{{ url_for('static', filename='img/placeholder.jpg') }}" alt="Placeholder">
+                                <div class="placeholder-overlay">
+                                    <i class="fas fa-camera placeholder-icon"></i>
+                                    <p class="lang" data-vi="Tải ảnh lên hoặc Bật camera để nhận diện" data-en="Upload an image or start camera to detect">Tải ảnh lên hoặc Bật camera để nhận diện</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Camera Stream view -->
+                        <div id="camera-container" class="image-container-single hidden">
+                            <img id="video-feed" src="" alt="Camera Feed">
+                        </div>
+                        
+                        <!-- Before & After Comparison (Dual Viewport) -->
+                        <div id="comparison-container" class="image-comparison-container hidden">
+                            <div class="image-wrapper">
+                                <h3 class="image-title-tab lang" data-vi="Ảnh Gốc (Trước)" data-en="Original Image (Before)">Ảnh Gốc (Trước)</h3>
+                                <div class="image-box">
+                                    <img id="original-image" alt="Original Image">
+                                </div>
+                            </div>
+                            <div class="image-wrapper">
+                                <h3 class="image-title-tab lang" data-vi="Kết Quả Nhận Diện (Sau)" data-en="Detection Result (After)">Kết Quả Nhận Diện (Sau)</h3>
+                                <div class="image-box">
+                                    <img id="detected-image" alt="Detection Result">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="detection-area">
-                <!-- Khu vực hiển thị ảnh -->
-                <div class="image-display-section">
-                    <div id="loading-indicator" class="hidden">
-                        <div class="spinner"></div>
-                        <p class="lang" data-vi="Đang xử lý..." data-en="Processing...">Đang xử lý...</p>
-                    </div>
-                    
-                    <!-- Placeholder ban đầu -->
-                    <div id="placeholder-container" class="image-container-single">
-                        <img id="placeholder" src="{{ url_for('static', filename='img/placeholder.jpg') }}"
-                            alt="Vui lòng tải lên ảnh hoặc bật camera">
-                    </div>
-                    
-                    <!-- Camera feed -->
-                    <div id="camera-container" class="image-container-single hidden">
-                        <img id="video-feed" src="" alt="Camera Feed">
-                    </div>
-                    
-                    <!-- So sánh ảnh trước và sau -->
-                    <div id="comparison-container" class="image-comparison-container hidden">
-                        <div class="image-wrapper">
-                            <h3 class="image-title lang" data-vi="Ảnh gốc" data-en="Original Image">Ảnh gốc</h3>
-                            <div class="image-box">
-                                <img id="original-image" alt="Ảnh gốc">
-                            </div>
+            <!-- Right Side: Diagnostics & Detailed Table -->
+            <div class="column-right">
+                <!-- Summary Statistics Card -->
+                <div class="card summary-card">
+                    <div class="stat-badge">
+                        <div class="stat-icon-wrapper blue">
+                            <i class="fas fa-brain"></i>
                         </div>
-                        <div class="image-wrapper">
-                            <h3 class="image-title lang" data-vi="Kết quả nhận diện" data-en="Detection Result">Kết quả nhận diện</h3>
-                            <div class="image-box">
-                                <img id="detected-image" alt="Kết quả nhận diện">
-                            </div>
+                        <div class="stat-info">
+                            <span class="stat-label lang" data-vi="Số Đối Tượng" data-en="Object Count">Số Đối Tượng</span>
+                            <h3 id="object-count">0</h3>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-badge">
+                        <div class="stat-icon-wrapper green">
+                            <i class="fas fa-bolt"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label lang" data-vi="Thời Gian Xử Lý" data-en="Inference Time">Thời Gian Xử Lý</span>
+                            <h3 id="processing-time">0 ms</h3>
                         </div>
                     </div>
                 </div>
 
-                <div class="result-container">
-                    <h2 class="lang" data-vi="Kết quả nhận diện" data-en="Detection Results">Kết quả nhận diện</h2>
+                <!-- Recognition Results (List with Progress Bars) -->
+                <div class="card results-card">
+                    <h2 class="card-title lang" data-vi="Vật Thể Nhận Diện" data-en="Detected Materials">Vật Thể Nhận Diện</h2>
                     <div class="result-box">
                         <ul id="results-list">
-                            <li class="no-results lang" data-vi="Chưa có dữ liệu nhận diện"
-                                data-en="No detection data yet">Chưa có dữ liệu nhận diện</li>
+                            <li class="no-results lang" data-vi="Chưa có dữ liệu nhận diện" data-en="No detection data yet">Chưa có dữ liệu nhận diện</li>
                         </ul>
                     </div>
-                    <div class="stats">
-                        <div class="stat-item">
-                            <i class="fas fa-object-group"></i>
-                            <span class="lang" data-vi="Số đối tượng: " data-en="Objects: ">Số đối tượng: </span>
-                            <span id="object-count">0</span>
+                </div>
+
+                <!-- Detailed Metrics Table (Bảng theo dõi thông số chi tiết) -->
+                <div class="card metrics-card">
+                    <h2 class="card-title lang" data-vi="Bảng Thông Số Chi Tiết" data-en="Detailed Metrics Table">Bảng Thông Số Chi Tiết</h2>
+                    <div class="table-responsive">
+                        <table class="metrics-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th class="lang" data-vi="Vật Liệu" data-en="Material">Vật Liệu</th>
+                                    <th class="lang" data-vi="Độ Tin Cậy" data-en="Confidence">Độ Tin Cậy</th>
+                                    <th class="lang" data-vi="Tọa Độ (Box)" data-en="Coordinates (Box)">Tọa Độ (Box)</th>
+                                    <th class="lang" data-vi="Hướng Dẫn Xử Lý" data-en="Recycling Bin">Hướng Dẫn Xử Lý</th>
+                                </tr>
+                            </thead>
+                            <tbody id="metrics-table-body">
+                                <tr>
+                                    <td colspan="5" class="no-data lang" data-vi="Không có dữ liệu chi tiết" data-en="No detailed metrics available">Không có dữ liệu chi tiết</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Session Statistics Card (Thống kê Phiên làm việc) -->
+                <div class="card history-card">
+                    <h2 class="card-title lang" data-vi="Thống Kê Tổng Hợp Phiên" data-en="Session Aggregate Statistics">Thống Kê Tổng Hợp Phiên</h2>
+                    <div class="history-grid">
+                        <div class="history-item">
+                            <div class="color-indicator" style="background-color: rgb(0, 200, 255);"></div>
+                            <span class="history-label lang" data-vi="Giấy" data-en="Paper">Giấy</span>
+                            <span class="history-count" id="stat-count-paper">0</span>
                         </div>
-                        <div class="stat-item">
-                            <i class="fas fa-clock"></i>
-                            <span class="lang" data-vi="Thời gian xử lý: " data-en="Processing time: ">Thời gian xử lý:
-                            </span>
-                            <span id="processing-time">0 ms</span>
+                        <div class="history-item">
+                            <div class="color-indicator" style="background-color: rgb(192, 192, 192);"></div>
+                            <span class="history-label lang" data-vi="Kim loại" data-en="Metal">Kim loại</span>
+                            <span class="history-count" id="stat-count-metal">0</span>
                         </div>
+                        <div class="history-item">
+                            <div class="color-indicator" style="background-color: rgb(255, 255, 0);"></div>
+                            <span class="history-label lang" data-vi="Nhựa" data-en="Plastic">Nhựa</span>
+                            <span class="history-count" id="stat-count-plastic">0</span>
+                        </div>
+                        <div class="history-item">
+                            <div class="color-indicator" style="background-color: rgb(255, 128, 0);"></div>
+                            <span class="history-label lang" data-vi="Thủy tinh" data-en="Glass">Thủy tinh</span>
+                            <span class="history-count" id="stat-count-glass">0</span>
+                        </div>
+                        <div class="history-item">
+                            <div class="color-indicator" style="background-color: rgb(255, 0, 128);"></div>
+                            <span class="history-label lang" data-vi="Vải" data-en="Fabric">Vải</span>
+                            <span class="history-count" id="stat-count-fabric">0</span>
+                        </div>
+                        <div class="history-item total">
+                            <div class="color-indicator" style="background-color: var(--primary);"></div>
+                            <strong class="history-label lang" data-vi="Tổng cộng" data-en="Total">Tổng cộng</strong>
+                            <strong class="history-count" id="stat-count-total">0</strong>
+                        </div>
+                    </div>
+                    <div class="history-actions">
+                        <button id="reset-session-stats" class="btn-text lang" data-vi="Đặt lại thống kê" data-en="Reset statistics">Đặt lại thống kê</button>
                     </div>
                 </div>
             </div>
+        </main>
 
-            <div class="legend">
-                <h3 class="lang" data-vi="Chú thích màu" data-en="Color Legend">Chú thích màu</h3>
-                <div class="legend-items">
-                    <div class="legend-item">
-                        <!-- OpenCV: (255, 200, 0) → RGB: (0, 200, 255) -->
-                        <div class="color-box" style="background-color: rgb(0, 200, 255);"></div>
-                        <span class="lang" data-vi="Giấy" data-en="Paper">Giấy</span>
-                    </div>
-                    <div class="legend-item">
-                        <!-- (192, 192, 192) là trung tính, giữ nguyên -->
-                        <div class="color-box" style="background-color: rgb(192, 192, 192);"></div>
-                        <span class="lang" data-vi="Kim loại" data-en="Metal">Kim loại</span>
-                    </div>
-                    <div class="legend-item">
-                        <!-- (0, 255, 255) → RGB: (255, 255, 0) -->
-                        <div class="color-box" style="background-color: rgb(255, 255, 0);"></div>
-                        <span class="lang" data-vi="Nhựa" data-en="Plastic">Nhựa</span>
-                    </div>
-                    <div class="legend-item">
-                        <!-- (0, 128, 255) → RGB: (255, 128, 0) -->
-                        <div class="color-box" style="background-color: rgb(255, 128, 0);"></div>
-                        <span class="lang" data-vi="Thủy tinh" data-en="Glass">Thủy tinh</span>
-                    </div>
-                    <div class="legend-item">
-                        <!-- (128, 0, 255) → RGB: (255, 0, 128) -->
-                        <div class="color-box" style="background-color: rgb(255, 0, 128);"></div>
-                        <span class="lang" data-vi="Vải" data-en="Fabric">Vải</span>
-                    </div>
-                </div>
-            </div>            
-        </div>
-
-        <footer>
-            <p>&copy; 2025 <span class="lang" data-vi="Hệ Thống Phân Loại Vật Liệu Tái Chế"
-                    data-en="Recyclable Material Recognition System">Hệ thống Phân Loại Vật Liệu Tái Chế</span></p>
+        <!-- Footer -->
+        <footer class="app-footer">
+            <p>&copy; <span id="current-year"></span> Material Classification System</p>
         </footer>
     </div>
 
+    <!-- Custom Script -->
+    <script src="{{ url_for('static', filename='js/translations.js') }}"></script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
 

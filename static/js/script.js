@@ -1,160 +1,272 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Các phần tử DOM
+    // DOM Elements
+    const themeToggle = document.getElementById('theme-toggle');
+    const languageToggle = document.getElementById('language-toggle');
+    const langText = document.getElementById('lang-text');
+    
     const startCameraBtn = document.getElementById('start-camera');
     const stopCameraBtn = document.getElementById('stop-camera');
     const uploadFileBtn = document.getElementById('upload-file');
+    
     const placeholderContainer = document.getElementById('placeholder-container');
     const cameraContainer = document.getElementById('camera-container');
     const comparisonContainer = document.getElementById('comparison-container');
+    
     const originalImage = document.getElementById('original-image');
     const detectedImage = document.getElementById('detected-image');
     const videoFeed = document.getElementById('video-feed');
     const loadingIndicator = document.getElementById("loading-indicator");
+    
     const resultsList = document.getElementById('results-list');
+    const metricsTableBody = document.getElementById('metrics-table-body');
     const objectCount = document.getElementById('object-count');
     const processingTime = document.getElementById('processing-time');
-    const languageToggle = document.getElementById('language-toggle');
-    const langText = document.getElementById('lang-text');
+    
+    // Session stats reset button
+    const resetStatsBtn = document.getElementById('reset-session-stats');
 
-    // Các biến trạng thái
+    // State variables
     let cameraActive = false;
     let detectionInterval = null;
-    let currentLanguage = localStorage.getItem('language') || 'vi'; // Mặc định là tiếng Việt
-
-    // Các từ điển ngôn ngữ
-    const translations = {
-        // Bản dịch cho thông báo lỗi và thông báo khác
-        en: {
-            'Không thể kết nối với camera': 'Unable to connect to camera',
-            'Lỗi khi xử lý ảnh': 'Error processing image',
-            'Vui lòng chọn một file ảnh': 'Please select an image file',
-            'Chưa có dữ liệu nhận diện': 'No detection data yet',
-            // Bản dịch cho tên lớp
-            'Giay': 'Paper',
-            'KimLoai': 'Metal',
-            'Nhua': 'Plastic',
-            'ThuyTinh': 'Glass',
-            'Vai': 'Fabric',
-            'None': 'None'
-        },
-        vi: {
-            'Paper': 'Giấy',
-            'Metal': 'Kim loại',
-            'Plastic': 'Nhựa',
-            'Glass': 'Thủy tinh',
-            'Fabric': 'Vải',
-            'None': 'Không có'
-        }
+    let currentLanguage = localStorage.getItem('language') || 'vi';
+    
+    // Session statistics counters
+    let sessionCounts = {
+        'Giay': parseInt(localStorage.getItem('stat_Giay')) || 0,
+        'KimLoai': parseInt(localStorage.getItem('stat_KimLoai')) || 0,
+        'Nhua': parseInt(localStorage.getItem('stat_Nhua')) || 0,
+        'ThuyTinh': parseInt(localStorage.getItem('stat_ThuyTinh')) || 0,
+        'Vai': parseInt(localStorage.getItem('stat_Vai')) || 0
     };
+    
+    // For smart debouncing camera detections
+    let lastFrameCounts = { 'Giay': 0, 'KimLoai': 0, 'Nhua': 0, 'ThuyTinh': 0, 'Vai': 0 };
 
-    // Khởi tạo - ẩn loading indicator
-    showLoading(false);
+    // (materialConfig and translations are loaded globally from translations.js)
 
-    // Khởi tạo placeholder
-    const placeholderImg = document.getElementById('placeholder');
-    if (placeholderImg) {
-        fetch('/static/img/placeholder.jpg')
-            .catch(() => {
-                console.warn("Không tìm thấy ảnh placeholder, sử dụng màu nền");
-                placeholderImg.style.backgroundColor = "#333";
-            });
+    // --- Theme Logic ---
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    const themeIcon = themeToggle.querySelector('i');
+    
+    if (savedTheme === 'dark') {
+        document.body.classList.add('dark-theme');
+        themeIcon.className = 'fas fa-sun';
+    } else {
+        document.body.classList.remove('dark-theme');
+        themeIcon.className = 'fas fa-moon';
     }
 
-    // Áp dụng ngôn ngữ đã lưu
-    applyLanguage(currentLanguage);
+    themeToggle.addEventListener('click', function() {
+        if (document.body.classList.contains('dark-theme')) {
+            document.body.classList.remove('dark-theme');
+            themeIcon.className = 'fas fa-moon';
+            localStorage.setItem('theme', 'light');
+        } else {
+            document.body.classList.add('dark-theme');
+            themeIcon.className = 'fas fa-sun';
+            localStorage.setItem('theme', 'dark');
+        }
+    });
 
-    // Xử lý sự kiện chuyển đổi ngôn ngữ
+    // --- Language Logic ---
+    applyLanguage(currentLanguage);
+    updateSessionStatsUI();
+
     languageToggle.addEventListener('click', function() {
         currentLanguage = currentLanguage === 'vi' ? 'en' : 'vi';
         localStorage.setItem('language', currentLanguage);
         applyLanguage(currentLanguage);
+        
+        // If camera is running, update the stream source to match the selected language
+        if (cameraActive) {
+            videoFeed.src = `/video_feed?lang=${currentLanguage}`;
+        }
+        
+        // Re-render table and results list to apply new language if there are active detections
+        if (lastDetections && lastDetections.length > 0) {
+            renderDetections(lastDetections);
+        } else {
+            clearResults();
+        }
     });
 
-    // Hàm áp dụng ngôn ngữ
     function applyLanguage(lang) {
-        // Cập nhật nút chuyển đổi ngôn ngữ
         langText.textContent = lang === 'vi' ? 'EN' : 'VI';
         
-        // Cập nhật các phần tử có class 'lang'
+        // Translate elements with class 'lang'
         document.querySelectorAll('.lang').forEach(element => {
             if (element.dataset[lang]) {
                 element.textContent = element.dataset[lang];
             }
         });
 
-        // Cập nhật tiêu đề trang
-        document.title = lang === 'vi' ? 'Hệ Thống Phân Loại Vật Liệu Tái Chế' : 'Recyclable Material Sorting System';
-        
-        // Cập nhật text trong placeholder
-        const placeholder = document.getElementById('placeholder');
-        if (placeholder) {
-            placeholder.alt = lang === 'vi' ? 'Vui lòng tải lên ảnh hoặc bật camera' : 'Please upload an image or start camera';
+        // Translate page title
+        document.title = lang === 'vi' ? 'Hệ Thống Phân Loại Vật Liệu' : 'Material Classification System';
+    }
+
+    function translate(key) {
+        if (translations[currentLanguage] && translations[currentLanguage][key]) {
+            return translations[currentLanguage][key];
         }
-        
-        // Cập nhật text trong images
-        if (originalImage) originalImage.alt = lang === 'vi' ? 'Ảnh gốc' : 'Original Image';
-        if (detectedImage) detectedImage.alt = lang === 'vi' ? 'Kết quả nhận diện' : 'Detection Result';
-        if (videoFeed) videoFeed.alt = lang === 'vi' ? 'Camera Feed' : 'Camera Feed';
-        
-        // Cập nhật kết quả hiện tại nếu có
-        if (!cameraActive && resultsList.querySelector('.no-results')) {
-            resultsList.querySelector('.no-results').textContent = 
-                lang === 'vi' ? 'Chưa có dữ liệu nhận diện' : 'No detection data yet';
+        return key;
+    }
+
+    // --- Session Stats Logic ---
+    function updateSessionStats(objects) {
+        // Count frequencies in current frame
+        let currentCounts = { 'Giay': 0, 'KimLoai': 0, 'Nhua': 0, 'ThuyTinh': 0, 'Vai': 0 };
+        objects.forEach(obj => {
+            if (currentCounts[obj.label] !== undefined) {
+                currentCounts[obj.label]++;
+            }
+        });
+
+        // Smart addition: only add the positive differences (debouncing static frames)
+        let addedSomething = false;
+        for (let key in currentCounts) {
+            let diff = currentCounts[key] - lastFrameCounts[key];
+            if (diff > 0) {
+                sessionCounts[key] += diff;
+                localStorage.setItem(`stat_${key}`, sessionCounts[key]);
+                addedSomething = true;
+            }
+        }
+
+        // Save last frame counts
+        lastFrameCounts = currentCounts;
+
+        if (addedSomething || objects.length === 0) {
+            updateSessionStatsUI();
         }
     }
 
-    // Hàm dịch văn bản
-    function translate(text, lang) {
-        // Nếu có bản dịch, trả về bản dịch
-        if (translations[lang] && translations[lang][text]) {
-            return translations[lang][text];
+    function updateSessionStatsUI() {
+        let total = 0;
+        for (let key in sessionCounts) {
+            const el = document.getElementById(`stat-count-${key.toLowerCase()}`);
+            if (el) {
+                el.textContent = sessionCounts[key];
+            }
+            total += sessionCounts[key];
         }
-        // Nếu không có bản dịch, trả về văn bản gốc
-        return text;
+        const totalEl = document.getElementById('stat-count-total');
+        if (totalEl) {
+            totalEl.textContent = total;
+        }
     }
 
-    // Xử lý bật camera
+    resetStatsBtn.addEventListener('click', function() {
+        for (let key in sessionCounts) {
+            sessionCounts[key] = 0;
+            localStorage.setItem(`stat_${key}`, 0);
+            lastFrameCounts[key] = 0;
+        }
+        updateSessionStatsUI();
+    });
+
+    // --- Detections Rendering Logic ---
+    let lastDetections = null;
+
+    function renderDetections(objects) {
+        // 1. Update list with progress bars
+        resultsList.innerHTML = '';
+        if (objects.length === 0) {
+            const noResultsItem = document.createElement('li');
+            noResultsItem.className = 'no-results';
+            noResultsItem.textContent = translate('no_results');
+            resultsList.appendChild(noResultsItem);
+        } else {
+            objects.forEach((obj, index) => {
+                const item = document.createElement('li');
+                if (index === 0) item.className = 'highlight';
+                
+                const config = materialConfig[obj.label] || { nameVi: obj.label, nameEn: obj.label };
+                const displayName = currentLanguage === 'vi' ? config.nameVi : config.nameEn;
+                
+                item.innerHTML = `
+                    <span class="object-label">${displayName}</span>
+                    <div class="confidence-bar">
+                        <div class="confidence-level" style="width: ${obj.confidence * 100}%"></div>
+                    </div>
+                    <span class="confidence-value">${(obj.confidence * 100).toFixed(1)}%</span>
+                `;
+                resultsList.appendChild(item);
+            });
+        }
+
+        // 2. Update detailed metrics table
+        metricsTableBody.innerHTML = '';
+        if (objects.length === 0) {
+            metricsTableBody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="no-data">${translate('no_data')}</td>
+                </tr>
+            `;
+        } else {
+            objects.forEach((obj, index) => {
+                const config = materialConfig[obj.label] || {
+                    class: 'badge-gray',
+                    nameVi: obj.label,
+                    nameEn: obj.label,
+                    binVi: 'Không xác định',
+                    binEn: 'Unknown',
+                    binColor: '#6b7280'
+                };
+                
+                const displayName = currentLanguage === 'vi' ? config.nameVi : config.nameEn;
+                const binRecommendation = currentLanguage === 'vi' ? config.binVi : config.binEn;
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td><span class="badge ${config.class}">${displayName}</span></td>
+                    <td><strong>${(obj.confidence * 100).toFixed(1)}%</strong></td>
+                    <td class="coord-cell">x:${obj.position.x}, y:${obj.position.y}, w:${obj.position.width}, h:${obj.position.height}</td>
+                    <td class="bin-cell">
+                        <span class="bin-indicator" style="background-color: ${config.binColor}"></span>
+                        <span>${binRecommendation}</span>
+                    </td>
+                `;
+                metricsTableBody.appendChild(row);
+            });
+        }
+    }
+
+    // --- Camera stream and polling controllers ---
     startCameraBtn.addEventListener('click', function() {
         if (cameraActive) return;
         
         showLoading(true);
         cameraActive = true;
         
-        // Ẩn tất cả container khác và hiển thị camera
         placeholderContainer.classList.add('hidden');
         comparisonContainer.classList.add('hidden');
         cameraContainer.classList.remove('hidden');
         
-        videoFeed.src = "/video_feed";
+        videoFeed.src = `/video_feed?lang=${currentLanguage}`;
         
         startCameraBtn.disabled = true;
         stopCameraBtn.disabled = false;
         
-        // Khi video stream đã sẵn sàng
         videoFeed.onload = function() {
             showLoading(false);
-            
-            // Bắt đầu theo dõi kết quả nhận diện từ video stream
             startDetectionPolling();
         };
         
         videoFeed.onerror = function() {
-            showError(translate('Không thể kết nối với camera', currentLanguage));
+            showError(translate('error_camera'));
             stopCamera();
         };
     });
 
-    // Xử lý tắt camera
     stopCameraBtn.addEventListener('click', stopCamera);
 
-    // Hàm dừng camera
     function stopCamera() {
         if (!cameraActive) return;
         
         fetch('/stop_camera')
             .then(response => response.json())
             .then(data => {
-                console.log("Camera đã dừng:", data);
                 cameraActive = false;
                 
                 cameraContainer.classList.add('hidden');
@@ -168,7 +280,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     detectionInterval = null;
                 }
                 
-                // Xóa kết quả nhận diện
                 clearResults();
             })
             .catch(error => {
@@ -176,24 +287,77 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
-    // Xử lý tải ảnh lên
+    function startDetectionPolling() {
+        if (detectionInterval) {
+            clearInterval(detectionInterval);
+        }
+        
+        // Poll frame detection data every 1 second
+        detectionInterval = setInterval(() => {
+            if (!cameraActive) {
+                clearInterval(detectionInterval);
+                detectionInterval = null;
+                return;
+            }
+            
+            const canvas = document.createElement('canvas');
+            canvas.width = videoFeed.naturalWidth || 640;
+            canvas.height = videoFeed.naturalHeight || 480;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(videoFeed, 0, 0, canvas.width, canvas.height);
+            
+            canvas.toBlob(blob => {
+                if (!blob || !cameraActive) return;
+                
+                const formData = new FormData();
+                formData.append('file', blob, 'snapshot.jpg');
+                
+                const startTime = performance.now();
+                
+                fetch(`/upload?lang=${currentLanguage}`, {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (!cameraActive) return;
+                    const endTime = performance.now();
+                    const processingTimeMs = endTime - startTime;
+                    
+                    lastDetections = data.objects;
+                    objectCount.textContent = data.objects.length;
+                    processingTime.textContent = `${processingTimeMs.toFixed(0)} ms`;
+                    
+                    renderDetections(data.objects);
+                    updateSessionStats(data.objects);
+                })
+                .catch(error => {
+                    console.error("Lỗi khi nhận dạng camera frame:", error);
+                });
+                
+            }, 'image/jpeg', 0.85);
+            
+        }, 1000);
+    }
+
+    // --- Upload file controller ---
     uploadFileBtn.addEventListener('change', function(e) {
         if (e.target.files.length === 0) return;
         
-        // Nếu camera đang bật, tắt camera trước
         if (cameraActive) {
             stopCamera();
         }
         
         const file = e.target.files[0];
         if (!file.type.match('image.*')) {
-            alert(translate('Vui lòng chọn một file ảnh', currentLanguage));
+            alert(translate('error_select_file'));
             return;
         }
         
         showLoading(true);
         
-        // Đọc file để hiển thị ảnh gốc
+        // Display original image
         const reader = new FileReader();
         reader.onload = function(event) {
             originalImage.src = event.target.result;
@@ -205,147 +369,48 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const startTime = performance.now();
         
-        fetch('/upload', {
+        fetch(`/upload?lang=${currentLanguage}`, {
             method: 'POST',
             body: formData
         })
         .then(response => {
-            if (!response.ok) {
-                throw new Error('Lỗi khi tải ảnh lên');
-            }
+            if (!response.ok) throw new Error('Network response error');
             return response.json();
         })
         .then(data => {
             const endTime = performance.now();
             const processingTimeMs = endTime - startTime;
             
-            // Hiển thị ảnh đã xử lý và ảnh gốc
             placeholderContainer.classList.add('hidden');
             cameraContainer.classList.add('hidden');
             comparisonContainer.classList.remove('hidden');
             
             detectedImage.src = data.image;
             
-            // Hiển thị kết quả
-            updateResults(data.objects, processingTimeMs);
+            lastDetections = data.objects;
+            objectCount.textContent = data.objects.length;
+            processingTime.textContent = `${processingTimeMs.toFixed(0)} ms`;
             
-            // Reset input file để có thể tải cùng một file lên lại
+            // Clear last frame counts to force full count addition on single uploaded image
+            for (let k in lastFrameCounts) {
+                lastFrameCounts[k] = 0;
+            }
+            
+            renderDetections(data.objects);
+            updateSessionStats(data.objects);
+            
             uploadFileBtn.value = '';
         })
         .catch(error => {
-            console.error('Lỗi:', error);
-            showError(translate('Lỗi khi xử lý ảnh', currentLanguage));
+            console.error('Lỗi upload:', error);
+            showError(translate('error_processing'));
         })
         .finally(() => {
             showLoading(false);
         });
     });
 
-    // Hàm bắt đầu theo dõi kết quả nhận diện từ video stream
-    function startDetectionPolling() {
-        if (detectionInterval) {
-            clearInterval(detectionInterval);
-        }
-        
-        // Thực hiện một yêu cầu nhận diện mỗi 1 giây
-        detectionInterval = setInterval(() => {
-            if (!cameraActive) {
-                clearInterval(detectionInterval);
-                detectionInterval = null;
-                return;
-            }
-            
-            // Tạo canvas để lấy frame hiện tại từ video
-            const canvas = document.createElement('canvas');
-            canvas.width = videoFeed.naturalWidth || 640;
-            canvas.height = videoFeed.naturalHeight || 480;
-            
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(videoFeed, 0, 0, canvas.width, canvas.height);
-            
-            // Chuyển đổi canvas thành blob
-            canvas.toBlob(blob => {
-                if (!blob || !cameraActive) return;
-                
-                const formData = new FormData();
-                formData.append('file', blob, 'snapshot.jpg');
-                
-                const startTime = performance.now();
-                
-                fetch('/upload', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (!cameraActive) return;
-                    
-                    const endTime = performance.now();
-                    const processingTimeMs = endTime - startTime;
-                    
-                    // Cập nhật kết quả từ frame hiện tại
-                    updateResults(data.objects, processingTimeMs);
-                })
-                .catch(error => {
-                    console.error("Lỗi khi nhận diện frame:", error);
-                });
-                
-            }, 'image/jpeg', 0.8);
-            
-        }, 1000); // 1 giây/lần
-    }
-
-    // Hàm cập nhật kết quả nhận diện
-    function updateResults(objects, timeMs) {
-        // Cập nhật số lượng đối tượng và thời gian xử lý
-        objectCount.textContent = objects.length;
-        processingTime.textContent = `${timeMs.toFixed(0)} ms`;
-        
-        // Xóa danh sách kết quả cũ
-        resultsList.innerHTML = '';
-        
-        if (objects.length === 0) {
-            const noResultsItem = document.createElement('li');
-            noResultsItem.className = 'no-results';
-            noResultsItem.textContent = translate('Chưa có dữ liệu nhận diện', currentLanguage);
-            resultsList.appendChild(noResultsItem);
-        } else {
-            // Hiển thị các đối tượng đã phát hiện
-            objects.forEach((obj, index) => {
-                const item = document.createElement('li');
-                item.className = index === 0 ? 'highlight' : '';
-                
-                // Dịch nhãn đối tượng theo ngôn ngữ hiện tại
-                const translatedLabel = currentLanguage === 'en' ? 
-                                        translate(obj.label, currentLanguage) : 
-                                        obj.label;
-                
-                const labelSpan = document.createElement('span');
-                labelSpan.className = 'object-label';
-                labelSpan.textContent = translatedLabel;
-                
-                const confidenceBar = document.createElement('div');
-                confidenceBar.className = 'confidence-bar';
-                
-                const confidenceLevel = document.createElement('div');
-                confidenceLevel.className = 'confidence-level';
-                confidenceLevel.style.width = `${obj.confidence * 100}%`;
-                
-                const confidenceValue = document.createElement('span');
-                confidenceValue.className = 'confidence-value';
-                confidenceValue.textContent = `${(obj.confidence * 100).toFixed(1)}%`;
-                
-                confidenceBar.appendChild(confidenceLevel);
-                item.appendChild(labelSpan);
-                item.appendChild(confidenceBar);
-                item.appendChild(confidenceValue);
-                
-                resultsList.appendChild(item);
-            });
-        }
-    }
-
-    // Hàm hiển thị loading indicator
+    // --- Utility UI Functions ---
     function showLoading(show) {
         if (show) {
             loadingIndicator.classList.remove('hidden');
@@ -354,28 +419,51 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Hàm hiển thị lỗi
     function showError(message) {
         clearResults();
+        
+        resultsList.innerHTML = '';
         const errorItem = document.createElement('li');
         errorItem.className = 'no-results';
-        errorItem.style.color = 'red';
+        errorItem.style.color = 'var(--danger)';
         errorItem.textContent = message;
         resultsList.appendChild(errorItem);
+        
+        metricsTableBody.innerHTML = `
+            <tr>
+                <td colspan="5" class="no-data" style="color: var(--danger)">${message}</td>
+            </tr>
+        `;
     }
 
-    // Hàm xóa kết quả
     function clearResults() {
+        lastDetections = null;
+        for (let k in lastFrameCounts) {
+            lastFrameCounts[k] = 0;
+        }
+        
         resultsList.innerHTML = '';
         const noResultsItem = document.createElement('li');
         noResultsItem.className = 'no-results';
-        noResultsItem.textContent = translate('Chưa có dữ liệu nhận diện', currentLanguage);
+        noResultsItem.textContent = translate('no_results');
         resultsList.appendChild(noResultsItem);
+        
+        metricsTableBody.innerHTML = `
+            <tr>
+                <td colspan="5" class="no-data">${translate('no_data')}</td>
+            </tr>
+        `;
         
         objectCount.textContent = '0';
         processingTime.textContent = '0 ms';
     }
 
-    // Khởi tạo ban đầu
+    // Set dynamic year in footer
+    const currentYearEl = document.getElementById('current-year');
+    if (currentYearEl) {
+        currentYearEl.textContent = new Date().getFullYear();
+    }
+
+    // Initialize UI on startup
     clearResults();
 });
