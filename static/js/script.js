@@ -327,7 +327,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     lastDetections = data.objects;
                     objectCount.textContent = data.objects.length;
-                    processingTime.textContent = `${processingTimeMs.toFixed(0)} ms`;
+                    if (processingTime) {
+                        processingTime.textContent = `${processingTimeMs.toFixed(0)} ms`;
+                    }
                     
                     renderDetections(data.objects);
                     updateSessionStats(data.objects);
@@ -389,7 +391,9 @@ document.addEventListener('DOMContentLoaded', function() {
             
             lastDetections = data.objects;
             objectCount.textContent = data.objects.length;
-            processingTime.textContent = `${processingTimeMs.toFixed(0)} ms`;
+            if (processingTime) {
+                processingTime.textContent = `${processingTimeMs.toFixed(0)} ms`;
+            }
             
             // Clear last frame counts to force full count addition on single uploaded image
             for (let k in lastFrameCounts) {
@@ -455,7 +459,9 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
         
         objectCount.textContent = '0';
-        processingTime.textContent = '0 ms';
+        if (processingTime) {
+            processingTime.textContent = '0 ms';
+        }
     }
 
     // Set dynamic year in footer
