@@ -28,6 +28,12 @@
             </div>
             
             <div class="header-actions">
+                <!-- Font size adjuster slider -->
+                <div class="font-size-adjuster" title="Chỉnh cỡ chữ / Adjust font size">
+                    <i class="fas fa-font"></i>
+                    <input type="range" id="font-size-slider" min="12" max="32" value="15">
+                    <span id="font-size-value">15px</span>
+                </div>
                 <!-- Theme toggle button -->
                 <button id="theme-toggle" class="action-btn" aria-label="Toggle Theme">
                     <i class="fas fa-moon"></i>
@@ -123,7 +129,7 @@
                         </div>
                     </div>
                     
-                    <div class="stat-badge">
+                    <!-- <div class="stat-badge">
                         <div class="stat-icon-wrapper green">
                             <i class="fas fa-bolt"></i>
                         </div>
@@ -131,7 +137,7 @@
                             <span class="stat-label lang" data-vi="Thời Gian Xử Lý" data-en="Inference Time">Thời Gian Xử Lý</span>
                             <h3 id="processing-time">0 ms</h3>
                         </div>
-                    </div>
+                    </div> -->
                 </div>
 
                 <!-- Recognition Results (List with Progress Bars) -->

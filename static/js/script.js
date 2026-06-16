@@ -68,6 +68,24 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // --- Font Size Adjustment Logic ---
+    const fontSizeSlider = document.getElementById('font-size-slider');
+    const fontSizeValue = document.getElementById('font-size-value');
+    
+    let savedFontSize = localStorage.getItem('font-size') || '15';
+    document.documentElement.style.setProperty('--font-size-base', savedFontSize + 'px');
+    if (fontSizeSlider && fontSizeValue) {
+        fontSizeSlider.value = savedFontSize;
+        fontSizeValue.textContent = savedFontSize + 'px';
+        
+        fontSizeSlider.addEventListener('input', function() {
+            const size = fontSizeSlider.value;
+            document.documentElement.style.setProperty('--font-size-base', size + 'px');
+            fontSizeValue.textContent = size + 'px';
+            localStorage.setItem('font-size', size);
+        });
+    }
+
     // --- Language Logic ---
     applyLanguage(currentLanguage);
     updateSessionStatsUI();
@@ -142,8 +160,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function updateSessionStatsUI() {
         let total = 0;
+        const keyToIdMap = {
+            'Giay': 'paper',
+            'KimLoai': 'metal',
+            'Nhua': 'plastic',
+            'ThuyTinh': 'glass',
+            'Vai': 'fabric'
+        };
         for (let key in sessionCounts) {
-            const el = document.getElementById(`stat-count-${key.toLowerCase()}`);
+            const idSuffix = keyToIdMap[key] || key.toLowerCase();
+            const el = document.getElementById(`stat-count-${idSuffix}`);
             if (el) {
                 el.textContent = sessionCounts[key];
             }
